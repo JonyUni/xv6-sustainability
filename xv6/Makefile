@@ -135,11 +135,16 @@ UPROGS=\
 	$U/_ln\
 	$U/_ls\
 	$U/_mkdir\
+	$U/_mediumjob\
 	$U/_rm\
 	$U/_sh\
+	$U/_schedbench\
+	$U/_shortjob\
 	$U/_stressfs\
 	$U/_usertests\
 	$U/_grind\
+	$U/_longjob\
+	$U/_burstjob\
 	$U/_wc\
 	$U/_zombie\
 	$U/_logstress\
