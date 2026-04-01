@@ -20,6 +20,13 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
+#define SHORT_JOB_BURST_LIMIT 3
+#define CPU_HOG_PENALTY_WEIGHT 2
+
+static uint proc_sched_score(struct proc *p);
+static int proc_is_better_choice(struct proc *candidate, struct proc *best);
+static void proc_reset_burst_accounting(struct proc *p);
+
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
 // memory model when using p->parent.
@@ -55,6 +62,10 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
+      p->run_ticks = 0;
+      p->burst_ticks = 0;
+      p->recent_burst_ticks = 0;
+      p->times_scheduled = 0;
   }
 }
 
@@ -124,6 +135,10 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->run_ticks = 0;
+  p->burst_ticks = 0;
+  p->recent_burst_ticks = 0;
+  p->times_scheduled = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -163,12 +178,48 @@ freeproc(struct proc *p)
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
+  p->run_ticks = 0;
+  p->burst_ticks = 0;
+  p->recent_burst_ticks = 0;
+  p->times_scheduled = 0;
   p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+}
+
+static uint
+proc_sched_score(struct proc *p)
+{
+  return p->run_ticks + (CPU_HOG_PENALTY_WEIGHT * p->recent_burst_ticks);
+}
+
+static int
+proc_is_better_choice(struct proc *candidate, struct proc *best)
+{
+  uint candidate_score;
+  uint best_score;
+
+  if(best == 0)
+    return 1;
+
+  candidate_score = proc_sched_score(candidate);
+  best_score = proc_sched_score(best);
+
+  if(candidate_score != best_score)
+    return candidate_score < best_score;
+  if(candidate->run_ticks != best->run_ticks)
+    return candidate->run_ticks < best->run_ticks;
+  return candidate->pid < best->pid;
+}
+
+static void
+proc_reset_burst_accounting(struct proc *p)
+{
+  p->burst_ticks = 0;
+  p->recent_burst_ticks = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -355,6 +406,7 @@ kexit(int status)
   
   acquire(&p->lock);
 
+  proc_reset_burst_accounting(p);
   p->xstate = status;
   p->state = ZOMBIE;
 
@@ -425,6 +477,7 @@ void
 scheduler(void)
 {
   struct proc *p;
+  struct proc *best;
   struct cpu *c = mycpu();
 
   c->proc = 0;
@@ -437,25 +490,34 @@ scheduler(void)
     intr_on();
     intr_off();
 
-    int found = 0;
+    best = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-        found = 1;
+      if(p->state == RUNNABLE && proc_is_better_choice(p, best)) {
+        if(best != 0)
+          release(&best->lock);
+        best = p;
+        continue;
       }
       release(&p->lock);
     }
-    if(found == 0) {
+
+    if(best != 0) {
+      // Switch to chosen process. It is the process's job
+      // to release its lock and then reacquire it
+      // before jumping back to us.
+      best->state = RUNNING;
+      best->burst_ticks = 0;
+      best->recent_burst_ticks = 0;
+      best->times_scheduled++;
+      c->proc = best;
+      swtch(&c->context, &best->context);
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+      release(&best->lock);
+    } else {
       // nothing to run; stop running on this core until an interrupt.
       asm volatile("wfi");
     }
@@ -495,9 +557,34 @@ yield(void)
 {
   struct proc *p = myproc();
   acquire(&p->lock);
+  p->recent_burst_ticks = p->burst_ticks;
+  p->burst_ticks = 0;
   p->state = RUNNABLE;
   sched();
   release(&p->lock);
+}
+
+int
+proc_tick_and_should_yield(void)
+{
+  int should_yield;
+  struct proc *p = myproc();
+
+  if(p == 0)
+    return 0;
+
+  acquire(&p->lock);
+  if(p->state != RUNNING){
+    release(&p->lock);
+    return 0;
+  }
+
+  p->run_ticks++;
+  p->burst_ticks++;
+  should_yield = p->burst_ticks >= SHORT_JOB_BURST_LIMIT;
+  release(&p->lock);
+
+  return should_yield;
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -556,6 +643,7 @@ sleep(void *chan, struct spinlock *lk)
 
   // Go to sleep.
   p->chan = chan;
+  proc_reset_burst_accounting(p);
   p->state = SLEEPING;
 
   sched();

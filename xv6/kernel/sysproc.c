@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "schedstats.h"
 #include "vm.h"
 
 uint64
@@ -106,4 +107,27 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_getschedstats(void)
+{
+  uint64 addr;
+  struct proc *p;
+  struct schedstats stats;
+
+  argaddr(0, &addr);
+  p = myproc();
+
+  acquire(&p->lock);
+  stats.pid = p->pid;
+  stats.run_ticks = p->run_ticks;
+  stats.recent_burst_ticks = p->recent_burst_ticks;
+  stats.times_scheduled = p->times_scheduled;
+  release(&p->lock);
+
+  if(copyout(p->pagetable, addr, (char *)&stats, sizeof(stats)) < 0)
+    return -1;
+
+  return 0;
 }

@@ -91,6 +91,7 @@ void            setkilled(struct proc*);
 struct cpu*     mycpu(void);
 struct proc*    myproc();
 void            procinit(void);
+int             proc_tick_and_should_yield(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
 void            sleep(void*, struct spinlock*);
@@ -142,6 +143,7 @@ void            trapinit(void);
 void            trapinithart(void);
 extern struct spinlock tickslock;
 void            prepare_return(void);
+uint64          sys_getschedstats(void);
 
 // uart.c
 void            uartinit(void);

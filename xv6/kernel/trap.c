@@ -80,8 +80,8 @@ usertrap(void)
   if(killed(p))
     kexit(-1);
 
-  // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  // Let favored short jobs run in small bursts before preempting them.
+  if(which_dev == 2 && proc_tick_and_should_yield())
     yield();
 
   prepare_return();
@@ -151,8 +151,8 @@ kerneltrap()
     panic("kerneltrap");
   }
 
-  // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2 && myproc() != 0)
+  // Let favored short jobs run in small bursts before preempting them.
+  if(which_dev == 2 && proc_tick_and_should_yield())
     yield();
 
   // the yield() may have caused some traps to occur,
@@ -216,4 +216,3 @@ devintr()
     return 0;
   }
 }
-
