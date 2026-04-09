@@ -22,6 +22,8 @@ extern char trampoline[]; // trampoline.S
 
 #define SHORT_JOB_BURST_LIMIT 3
 #define CPU_HOG_PENALTY_WEIGHT 2
+#define ENERGY_PER_TICK 5
+#define ENERGY_LOG_SIZE 16
 
 static uint proc_sched_score(struct proc *p);
 static int proc_is_better_choice(struct proc *candidate, struct proc *best);
@@ -32,6 +34,17 @@ static void proc_reset_burst_accounting(struct proc *p);
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
+
+struct energy_record {
+  int pid;
+  char name[16];
+  uint64 cpu_ticks;
+  uint64 energy_used;
+};
+
+struct energy_record energy_log[ENERGY_LOG_SIZE];
+int energy_log_idx = 0;
+struct spinlock energy_log_lock;
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -58,6 +71,7 @@ procinit(void)
   
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
+  initlock(&energy_log_lock, "energy_log_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->state = UNUSED;
@@ -139,6 +153,8 @@ found:
   p->burst_ticks = 0;
   p->recent_burst_ticks = 0;
   p->times_scheduled = 0;
+  p->cpu_ticks = 0;
+  p->energy_used = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -188,6 +204,8 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->energy_used = 0;
+  p->cpu_ticks = 0;
 }
 
 static uint
@@ -408,6 +426,15 @@ kexit(int status)
 
   proc_reset_burst_accounting(p);
   p->xstate = status;
+
+  acquire(&energy_log_lock);
+  energy_log[energy_log_idx].pid = p->pid;
+  safestrcpy(energy_log[energy_log_idx].name, p->name, 16);
+  energy_log[energy_log_idx].cpu_ticks = p->cpu_ticks;
+  energy_log[energy_log_idx].energy_used = p->energy_used;
+  energy_log_idx = (energy_log_idx + 1) % ENERGY_LOG_SIZE;
+  release(&energy_log_lock);
+
   p->state = ZOMBIE;
 
   release(&wait_lock);
@@ -506,6 +533,7 @@ scheduler(void)
       // Switch to chosen process. It is the process's job
       // to release its lock and then reacquire it
       // before jumping back to us.
+      best->last_sched_in = ticks;
       best->state = RUNNING;
       best->burst_ticks = 0;
       best->recent_burst_ticks = 0;
@@ -545,6 +573,11 @@ sched(void)
     panic("sched RUNNING");
   if(intr_get())
     panic("sched interruptible");
+
+  
+  uint64 delta = ticks - p->last_sched_in;
+  p->cpu_ticks += delta;
+  p->energy_used += delta * ENERGY_PER_TICK;
 
   intena = mycpu()->intena;
   swtch(&p->context, &mycpu()->context);
