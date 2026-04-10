@@ -1,5 +1,6 @@
 #define SBRK_ERROR ((char *)-1)
 
+#include "kernel/energy.h"
 #include "kernel/schedstats.h"
 
 struct stat;
@@ -27,7 +28,7 @@ char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
 int getschedstats(struct schedstats *);
-int energyinfo(void);
+int getenergy(struct energy_record *);
 
 // ulib.c
 int stat(const char*, struct stat*);

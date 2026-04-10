@@ -144,6 +144,7 @@ void            trapinithart(void);
 extern struct spinlock tickslock;
 void            prepare_return(void);
 uint64          sys_getschedstats(void);
+uint64          sys_getenergy(void);
 
 // uart.c
 void            uartinit(void);

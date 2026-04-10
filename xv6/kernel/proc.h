@@ -81,14 +81,7 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-#define ENERGY_LOG_SIZE 16
-
-struct energy_record {
-  int pid;
-  char name[16];
-  uint64 cpu_ticks;
-  uint64 energy_used;
-};
+#include "energy.h"
 
 // Per-process state
 struct proc {

@@ -43,4 +43,4 @@ entry("sbrk");
 entry("pause");
 entry("uptime");
 entry("getschedstats");
-entry("energyinfo");
+entry("getenergy");

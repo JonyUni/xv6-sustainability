@@ -23,7 +23,6 @@ extern char trampoline[]; // trampoline.S
 #define SHORT_JOB_BURST_LIMIT 3
 #define CPU_HOG_PENALTY_WEIGHT 2
 #define ENERGY_PER_TICK 5
-#define ENERGY_LOG_SIZE 16
 
 static uint proc_sched_score(struct proc *p);
 static int proc_is_better_choice(struct proc *candidate, struct proc *best);
@@ -34,13 +33,6 @@ static void proc_reset_burst_accounting(struct proc *p);
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
-
-struct energy_record {
-  int pid;
-  char name[16];
-  uint64 cpu_ticks;
-  uint64 energy_used;
-};
 
 struct energy_record energy_log[ENERGY_LOG_SIZE];
 int energy_log_idx = 0;

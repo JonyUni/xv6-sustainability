@@ -137,28 +137,41 @@ sys_getschedstats(void)
   return 0;
 }
 uint64
-sys_energyinfo(void)
+sys_getenergy(void)
 {
+  uint64 addr;
+  struct proc *self;
   struct proc *p;
+  struct energy_record records[ENERGY_LOG_SIZE];
+  int count;
 
-  printf("PID\tNAME\tCPU_TICKS\tENERGY\n");
-  for(p = proc; p < &proc[NPROC]; p++){
+  argaddr(0, &addr);
+  self = myproc();
+
+  count = 0;
+  for(p = proc; p < &proc[NPROC] && count < ENERGY_LOG_SIZE; p++){
     acquire(&p->lock);
     if(p->state != UNUSED){
-      printf("%d\t%s\t%d\t\t%d\n", p->pid, p->name, (int)p->cpu_ticks, (int)p->energy_used);
+      records[count].pid = p->pid;
+      safestrcpy(records[count].name, p->name, sizeof(records[count].name));
+      records[count].cpu_ticks = p->cpu_ticks;
+      if(p->state == RUNNING)
+        records[count].cpu_ticks += ticks - p->last_sched_in;
+      records[count].energy_used = records[count].cpu_ticks;
+      count++;
     }
     release(&p->lock);
   }
 
-  printf("\n--- Completed Processes ---\n");
-  printf("PID\tNAME\tCPU_TICKS\tENERGY\n");
-  acquire(&energy_log_lock);
-  for(int i = 0; i < ENERGY_LOG_SIZE; i++){
-    if(energy_log[i].pid != 0)
-      printf("%d\t%s\t%d\t\t%d\n", energy_log[i].pid, energy_log[i].name,
-            (int)energy_log[i].cpu_ticks, (int)energy_log[i].energy_used);
+  for(int i = count; i < ENERGY_LOG_SIZE; i++){
+    records[i].pid = 0;
+    records[i].name[0] = '\0';
+    records[i].cpu_ticks = 0;
+    records[i].energy_used = 0;
   }
-  release(&energy_log_lock);
 
-  return 0;
+  if(copyout(self->pagetable, addr, (char *)records, sizeof(records)) < 0)
+    return -1;
+
+  return count;
 }

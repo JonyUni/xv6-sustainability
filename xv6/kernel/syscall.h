@@ -21,4 +21,4 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_getschedstats 22
-#define SYS_energyinfo 23
+#define SYS_getenergy 23
