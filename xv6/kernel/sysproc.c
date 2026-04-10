@@ -8,6 +8,11 @@
 #include "schedstats.h"
 #include "vm.h"
 
+extern struct proc proc[];
+extern struct energy_record energy_log[];
+extern int energy_log_idx;
+extern struct spinlock energy_log_lock;
+
 uint64
 sys_exit(void)
 {
@@ -128,6 +133,32 @@ sys_getschedstats(void)
 
   if(copyout(p->pagetable, addr, (char *)&stats, sizeof(stats)) < 0)
     return -1;
+
+  return 0;
+}
+uint64
+sys_energyinfo(void)
+{
+  struct proc *p;
+
+  printf("PID\tNAME\tCPU_TICKS\tENERGY\n");
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->state != UNUSED){
+      printf("%d\t%s\t%d\t\t%d\n", p->pid, p->name, (int)p->cpu_ticks, (int)p->energy_used);
+    }
+    release(&p->lock);
+  }
+
+  printf("\n--- Completed Processes ---\n");
+  printf("PID\tNAME\tCPU_TICKS\tENERGY\n");
+  acquire(&energy_log_lock);
+  for(int i = 0; i < ENERGY_LOG_SIZE; i++){
+    if(energy_log[i].pid != 0)
+      printf("%d\t%s\t%d\t\t%d\n", energy_log[i].pid, energy_log[i].name,
+            (int)energy_log[i].cpu_ticks, (int)energy_log[i].energy_used);
+  }
+  release(&energy_log_lock);
 
   return 0;
 }

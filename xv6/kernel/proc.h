@@ -81,6 +81,15 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+#define ENERGY_LOG_SIZE 16
+
+struct energy_record {
+  int pid;
+  char name[16];
+  uint64 cpu_ticks;
+  uint64 energy_used;
+};
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -95,6 +104,8 @@ struct proc {
   uint burst_ticks;            // Ticks consumed in the current CPU burst
   uint recent_burst_ticks;     // Length of the last completed CPU burst
   uint times_scheduled;        // Number of times the process has been dispatched
+  uint64 cpu_ticks;      // total ticks spent on CPU
+  uint64 energy_used;    // simulated energy units
 
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
@@ -108,4 +119,6 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  uint64 last_sched_in;  // tick when process was last scheduled in
+
 };
