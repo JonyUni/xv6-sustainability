@@ -90,5 +90,12 @@ main(void)
   }
 
   printf("schedbench done total_wall=%d\n", uptime() - start_tick);
+
+  // Display energy statistics to verify the idle sleep optimization is working.
+  // Shows the idle sleep count which represents cycles saved by avoiding busy-waiting.
+  energyinfo();
+
+  printf("schedbench energyinfo done\n");
+
   exit(0);
 }

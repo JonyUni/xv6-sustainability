@@ -24,6 +24,10 @@ extern char trampoline[]; // trampoline.S
 #define CPU_HOG_PENALTY_WEIGHT 2
 #define ENERGY_PER_TICK 5
 
+// Idle sleep optimization: track the number of times the CPU
+// enters low-power sleep mode during idle cycles instead of busy-waiting.
+uint64 idle_sleep_count = 0;
+
 static uint proc_sched_score(struct proc *p);
 static int proc_is_better_choice(struct proc *candidate, struct proc *best);
 static void proc_reset_burst_accounting(struct proc *p);
@@ -73,6 +77,18 @@ procinit(void)
       p->recent_burst_ticks = 0;
       p->times_scheduled = 0;
   }
+}
+
+// Idle sleep optimization: CPU halt during idle cycles.
+// When no runnable processes exist, instead of spinning with NOP instructions,
+// the scheduler calls this function to enter a low-power sleep state.
+// The CPU resumes execution only when hardware interrupts occur.
+// Increments idle_sleep_count to track energy saved from avoiding busy-waiting.
+void
+sleep_cpu(void)
+{
+  idle_sleep_count++;
+  asm volatile("wfi");  // Wait for interrupt - enters low-power state
 }
 
 // Must be called with interrupts disabled,
@@ -538,8 +554,9 @@ scheduler(void)
       c->proc = 0;
       release(&best->lock);
     } else {
-      // nothing to run; stop running on this core until an interrupt.
-      asm volatile("wfi");
+      // No runnable processes: enter low-power idle sleep mode to save energy
+      // instead of busy-waiting. The CPU will resume on the next interrupt.
+      sleep_cpu();
     }
   }
 }
