@@ -155,9 +155,7 @@ sys_getenergy(void)
       records[count].pid = p->pid;
       safestrcpy(records[count].name, p->name, sizeof(records[count].name));
       records[count].cpu_ticks = p->cpu_ticks;
-      if(p->state == RUNNING)
-        records[count].cpu_ticks += ticks - p->last_sched_in;
-      records[count].energy_used = records[count].cpu_ticks;
+      records[count].energy_used = p->energy_used;
       count++;
     }
     release(&p->lock);

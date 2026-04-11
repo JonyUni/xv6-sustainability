@@ -567,10 +567,6 @@ sched(void)
     panic("sched interruptible");
 
   
-  uint64 delta = ticks - p->last_sched_in;
-  p->cpu_ticks += delta;
-  p->energy_used += delta * ENERGY_PER_TICK;
-
   intena = mycpu()->intena;
   swtch(&p->context, &mycpu()->context);
   mycpu()->intena = intena;
@@ -605,6 +601,8 @@ proc_tick_and_should_yield(void)
   }
 
   p->run_ticks++;
+  p->cpu_ticks++;
+  p->energy_used += ENERGY_PER_TICK;
   p->burst_ticks++;
   should_yield = p->burst_ticks >= SHORT_JOB_BURST_LIMIT;
   release(&p->lock);
