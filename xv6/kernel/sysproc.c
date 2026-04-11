@@ -172,6 +172,10 @@ sys_getenergy(void)
   if(copyout(self->pagetable, addr, (char *)records, sizeof(records)) < 0)
     return -1;
 
+  // Display the idle sleep optimization metric on the console.
+  // This is useful for demo output and confirms low-power sleep entry count.
+  printf("\nIdle Sleep Count: %d\n", (int)idle_sleep_count);
+
   return count;
 }
 

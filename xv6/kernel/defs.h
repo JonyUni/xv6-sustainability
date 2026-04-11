@@ -91,6 +91,9 @@ void            setkilled(struct proc*);
 struct cpu*     mycpu(void);
 struct proc*    myproc();
 void            procinit(void);
+// Idle sleep optimization: low-power CPU halt function and cycle counter
+void            sleep_cpu(void);
+extern uint64   idle_sleep_count;  // Track idle sleep invocations for energy metrics
 int             proc_tick_and_should_yield(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
