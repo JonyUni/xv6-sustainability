@@ -173,11 +173,9 @@ sys_getenergy(void)
   if(copyout(self->pagetable, addr, (char *)records, sizeof(records)) < 0)
     return -1;
 
-  return count;
-  // Display the idle sleep optimization metric:
-  // Each count represents one instance of the CPU entering low-power sleep
-  // instead of busy-waiting, directly correlating to energy saved.
+  // Display the idle sleep optimization metric on the console.
+  // This is useful for demo output and confirms low-power sleep entry count.
   printf("\nIdle Sleep Count: %d\n", (int)idle_sleep_count);
 
-  return 0;
+  return count;
 }
