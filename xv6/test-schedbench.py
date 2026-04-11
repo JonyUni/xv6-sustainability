@@ -9,7 +9,8 @@ import time
 
 
 PROMPT = "$ "
-DONE = "schedbench done"
+# Wait for energyinfo output completion to capture idle sleep count metrics
+DONE = "schedbench energyinfo done"
 
 
 def wait_for_output(proc, pattern, timeout):

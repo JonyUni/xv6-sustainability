@@ -1,5 +1,6 @@
 #include "kernel/types.h"
 #include "kernel/stat.h"
+#include "kernel/energy.h"
 #include "user/user.h"
 
 struct workload {
@@ -90,5 +91,27 @@ main(void)
   }
 
   printf("schedbench done total_wall=%d\n", uptime() - start_tick);
+
+  // Display energy statistics to verify the idle sleep optimization is working.
+  // The getenergy syscall returns the current process energy records.
+  struct energy_record records[ENERGY_LOG_SIZE];
+  if(getenergy(records) < 0){
+    fprintf(2, "schedbench: getenergy failed\n");
+    exit(1);
+  }
+
+  printf("PID\tNAME\tCPU_TICKS\tENERGY\n");
+  for(int i = 0; i < ENERGY_LOG_SIZE; i++){
+    if(records[i].pid == 0)
+      continue;
+    printf("%d\t%s\t%d\t%d\n",
+           records[i].pid,
+           records[i].name,
+           (int)records[i].cpu_ticks,
+           (int)records[i].energy_used);
+  }
+
+  printf("schedbench energyinfo done\n");
+
   exit(0);
 }
