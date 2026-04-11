@@ -145,6 +145,8 @@ extern struct spinlock tickslock;
 void            prepare_return(void);
 uint64          sys_getschedstats(void);
 uint64          sys_getenergy(void);
+uint64          sys_eco_on(void);
+uint64          sys_eco_off(void);
 
 // uart.c
 void            uartinit(void);

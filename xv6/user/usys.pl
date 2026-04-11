@@ -44,3 +44,5 @@ entry("pause");
 entry("uptime");
 entry("getschedstats");
 entry("getenergy");
+entry("eco_on");
+entry("eco_off");

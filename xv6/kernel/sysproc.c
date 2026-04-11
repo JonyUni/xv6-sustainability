@@ -12,6 +12,7 @@ extern struct proc proc[];
 extern struct energy_record energy_log[];
 extern int energy_log_idx;
 extern struct spinlock energy_log_lock;
+extern int eco_mode;
 
 uint64
 sys_exit(void)
@@ -172,4 +173,18 @@ sys_getenergy(void)
     return -1;
 
   return count;
+}
+
+uint64
+sys_eco_on(void)
+{
+  eco_mode = 1;
+  return 0;
+}
+
+uint64
+sys_eco_off(void)
+{
+  eco_mode = 0;
+  return 0;
 }

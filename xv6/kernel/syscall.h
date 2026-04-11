@@ -22,3 +22,5 @@
 #define SYS_close  21
 #define SYS_getschedstats 22
 #define SYS_getenergy 23
+#define SYS_eco_on 24
+#define SYS_eco_off 25

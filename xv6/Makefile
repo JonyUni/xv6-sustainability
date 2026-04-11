@@ -150,6 +150,8 @@ UPROGS=\
 	$U/_logstress\
 	$U/_forphan\
 	$U/_dorphan\
+	$U/_ecoon\
+	$U/_ecooff\
 	$U/_energyinfo\
 	$U/_energytop\
 

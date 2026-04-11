@@ -14,6 +14,7 @@ struct proc *initproc;
 
 int nextpid = 1;
 struct spinlock pid_lock;
+int eco_mode = 0;
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
@@ -512,11 +513,21 @@ scheduler(void)
     best = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
-      if(p->state == RUNNABLE && proc_is_better_choice(p, best)) {
-        if(best != 0)
-          release(&best->lock);
-        best = p;
-        continue;
+      if(p->state == RUNNABLE) {
+        if(eco_mode) {
+          if(best == 0 || p->energy_used < best->energy_used ||
+             (p->energy_used == best->energy_used && p->pid < best->pid)) {
+            if(best != 0)
+              release(&best->lock);
+            best = p;
+            continue;
+          }
+        } else if(proc_is_better_choice(p, best)) {
+          if(best != 0)
+            release(&best->lock);
+          best = p;
+          continue;
+        }
       }
       release(&p->lock);
     }

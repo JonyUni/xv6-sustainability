@@ -103,6 +103,8 @@ extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_getschedstats(void);
 extern uint64 sys_getenergy(void);
+extern uint64 sys_eco_on(void);
+extern uint64 sys_eco_off(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -130,6 +132,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_getschedstats] sys_getschedstats,
 [SYS_getenergy] sys_getenergy,
+[SYS_eco_on]  sys_eco_on,
+[SYS_eco_off] sys_eco_off,
 };
 
 void

@@ -29,6 +29,8 @@ int pause(int);
 int uptime(void);
 int getschedstats(struct schedstats *);
 int getenergy(struct energy_record *);
+int eco_on(void);
+int eco_off(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
